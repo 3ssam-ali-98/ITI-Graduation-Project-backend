@@ -1,0 +1,15 @@
+# Ignore the database and migrations
+db.sqlite3
+**/migrations/
+**/__pycache__/
+
+# Ignore virtual environment
+venv/
+
+# Ignore compiled Python files
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore environment variables and secrets
+.env
