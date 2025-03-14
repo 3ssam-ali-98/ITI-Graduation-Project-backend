@@ -9,6 +9,7 @@ class Client(models.Model):
     address = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    business = models.ForeignKey("Business", related_name='clients', on_delete=models.CASCADE, null=True) 
 
     def __str__(self):
         return self.name
@@ -17,7 +18,7 @@ class Client(models.Model):
 
 class Business(models.Model):
     name = models.CharField(max_length=50)
-    # owner = models.ForeignKey("User", related_name='buisness', on_delete=models.CASCADE, null=True) 
+    owner = models.ForeignKey("User", related_name='buisnesses', on_delete=models.CASCADE, null=True) 
     
     def __str__(self):
         return self.name
@@ -36,22 +37,22 @@ class Tasks(models.Model):
     deadline = models.DateTimeField()
     completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    # business = models.OneToOneField(Business, on_delete=models.CASCADE)
-    # assigned_to = models.OneToOneField(User, on_delete=models.CASCADE)
+    business = models.ForeignKey("Business", related_name='tasks', on_delete=models.CASCADE, null=True) 
+    assigned_to = models.ForeignKey("User", related_name='tasks', on_delete=models.SET_NULL, null=True) 
 
     def __str__(self):
         return self.name
 
 class User(AbstractUser):
-	first_name = models.CharField(max_length=50, blank=True, null=True)
-	last_name = models.CharField(max_length=50, blank=True, null=True)
-	username = models.CharField(max_length=50, unique=True)
-	user_type = models.CharField(max_length=20, choices=(('Business Owner', 'Business Owner'), ('Employee', 'Employee'), ('', '')))
-	email = models.EmailField(unique=True)
-	mobile_phone = models.CharField(max_length=11, unique=True, null=True, blank=True)
-	profile_picture = models.FileField(upload_to='media/', blank=True, null=True)
-	created_at = models.DateTimeField(auto_now_add=True)
+    first_name = models.CharField(max_length=50, blank=True, null=True)
+    last_name = models.CharField(max_length=50, blank=True, null=True)
+    username = models.CharField(max_length=50, unique=True)
+    user_type = models.CharField(max_length=20, choices=(('Business Owner', 'Business Owner'), ('Employee', 'Employee'), ('', '')))
+    email = models.EmailField(unique=True)
+    mobile_phone = models.CharField(max_length=11, unique=True, null=True, blank=True)
+    profile_picture = models.FileField(upload_to='media/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    business = models.ForeignKey("Business", related_name='users', on_delete=models.CASCADE, null=True)
 
-	def __str__(self):
-		return f'{self.first_name} {self.last_name}'
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
