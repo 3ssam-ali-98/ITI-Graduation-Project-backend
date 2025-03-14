@@ -1,15 +1,17 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+
+# from django.shortcuts import render
+from rest_framework import viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from business_management.models import Business
+from business_management.serializers import BusinessSerializer
+from business_management.filters import BusinessFilter
 from .models import Tasks
 from .serializers import TaskSerializer
 from .models import Client
 from .serializers import ClientSerializer
-
-from django.shortcuts import render
-from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, generics, filters
+from rest_framework import status, generics
 from django.shortcuts import get_object_or_404
 from .models import User
 from .serializers import UserSerializer
@@ -78,4 +80,13 @@ class UserDetailView(APIView):
 		user = get_object_or_404(User, pk=pk)
 		user.delete()
 		return Response(status=status.HTTP_204_NO_CONTENT)
+  
+class BusinessView(viewsets.ModelViewSet):
+    queryset = Business.objects.all()
+    serializer_class = BusinessSerializer   
+    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = BusinessFilter
+    search_fields = ["name", "owner"]  
+    ordering_fields = ["name", "created_at"] 
 

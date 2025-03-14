@@ -1,7 +1,15 @@
 from rest_framework import serializers
+
+
+
+
+
+
+
 from .models import Tasks
 from .models import Client
 from business_management.models import User
+from business_management.models import Business
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -35,3 +43,10 @@ class UserSerializer(serializers.ModelSerializer):
 		validated_data["is_superuser"] = False
 		validated_data["is_staff"] = False
 		return super().create(validated_data)
+  
+class BusinessSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Business
+        fields = '__all__'
+        read_only_fields = ['owner']  
+
