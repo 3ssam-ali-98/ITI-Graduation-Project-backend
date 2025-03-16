@@ -15,6 +15,7 @@ from business_management.models import Business
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tasks
+        fields = '__all__'
 
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,6 +48,5 @@ class UserSerializer(serializers.ModelSerializer):
 class BusinessSerializer(serializers.ModelSerializer):
     class Meta:
         model = Business
-        fields = '__all__'
-        read_only_fields = ['owner']  
+        fields = '__all__' 
 
