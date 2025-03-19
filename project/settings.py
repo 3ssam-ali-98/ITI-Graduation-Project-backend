@@ -30,9 +30,9 @@ ALLOWED_HOSTS = []
 
 # Application definition
 
-CORS_Allowed_Origins = [
-    "http://localhost:3000",
-]
+# CORS_Allowed_Origins = [
+#     "http://localhost:3000",
+# ]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "django_filters",
     'corsheaders',
     "business_management",
-    "corsheaders",
 ]
 
 REST_FRAMEWORK = {

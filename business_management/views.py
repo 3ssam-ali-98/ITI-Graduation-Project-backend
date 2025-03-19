@@ -19,6 +19,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
+from rest_framework.permissions import IsAuthenticated
 
 
 # Create your views here.
@@ -40,10 +41,17 @@ class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     
 class EmployeeViewSet(viewsets.ModelViewSet):
-	queryset = User.objects.filter(user_type="Employee")
+    
 	serializer_class = UserSerializer
+	permission_classes = [IsAuthenticated]
+
+	def get_queryset(self):
+		user = self.request.user 
+		return User.objects.filter(user_type="Employee", business=user.business)
+
 	def perform_create(self, serializer):
-		user = serializer.save(is_superuser=False, is_staff=False)
+		owner = self.request.user
+		user = serializer.save(is_superuser=False, is_staff=False, business=owner.business)
 		user.set_password(user.password)  
 		user.save()
 
