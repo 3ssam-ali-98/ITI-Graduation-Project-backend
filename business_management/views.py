@@ -80,7 +80,8 @@ class UserDetailView(APIView):
 		user = get_object_or_404(User, pk=pk)
 		user.delete()
 		return Response(status=status.HTTP_204_NO_CONTENT)
-  
+
+
 class BusinessView(viewsets.ModelViewSet):
     queryset = Business.objects.all()
     serializer_class = BusinessSerializer   
