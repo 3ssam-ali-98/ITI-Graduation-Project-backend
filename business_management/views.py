@@ -16,6 +16,9 @@ from django.shortcuts import get_object_or_404
 from .models import User
 from .serializers import UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import update_last_login
 
 
 # Create your views here.
@@ -35,6 +38,14 @@ class TaskViewSet(viewsets.ModelViewSet):
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    
+class EmployeeViewSet(viewsets.ModelViewSet):
+	queryset = User.objects.filter(user_type="Employee")
+	serializer_class = UserSerializer
+	def perform_create(self, serializer):
+		user = serializer.save(is_superuser=False, is_staff=False)
+		user.set_password(user.password)  
+		user.save()
 
 
 class UserListCreateView(generics.ListCreateAPIView):
@@ -45,7 +56,12 @@ class UserListCreateView(generics.ListCreateAPIView):
 	search_fields = ['username']
 
 	def perform_create(self, serializer):
-		serializer.save(is_superuser=False, is_staff=False)
+		user = serializer.save(is_superuser=False, is_staff=False)
+		user.set_password(user.password)  
+		user.save()
+		business = Business.objects.create(name=self.request.data.get("business_name"), owner=user)
+		user.business = business
+		user.save()
 
 
 class UserDetailView(APIView):
@@ -90,3 +106,18 @@ class BusinessView(viewsets.ModelViewSet):
     search_fields = ["name", "owner"]  
     ordering_fields = ["name", "created_at"] 
 
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        try:
+            user = User.objects.get(email=email)  
+            if user.check_password(password):  
+                token, created = Token.objects.get_or_create(user=user)
+                return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.username}, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            pass
+
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
