@@ -18,7 +18,7 @@ class Client(models.Model):
 
 class Business(models.Model):
     name = models.CharField(max_length=50)
-    owner = models.ForeignKey("User", related_name='buisnesses', on_delete=models.CASCADE, null=True) 
+    owner = models.OneToOneField("User", related_name='buisnesses', on_delete=models.CASCADE, null=True) 
     
     def __str__(self):
         return self.name
@@ -55,4 +55,4 @@ class User(AbstractUser):
     business = models.ForeignKey("Business", related_name='users', on_delete=models.CASCADE, null=True)
 
     def __str__(self):
-        return f'{self.first_name} {self.last_name}'
+        return f'{self.first_name} {self.last_name} - {self.username}'

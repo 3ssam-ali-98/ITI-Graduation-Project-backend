@@ -15,6 +15,7 @@ from business_management.models import Business
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tasks
+        fields = '__all__'
 
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,6 +25,8 @@ class ClientSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+	business_name = serializers.CharField(source="business.name", read_only=True)
+	password = serializers.SerializerMethodField()
 	class Meta:
 		model = User
 		fields = '__all__'
@@ -43,10 +46,12 @@ class UserSerializer(serializers.ModelSerializer):
 		validated_data["is_superuser"] = False
 		validated_data["is_staff"] = False
 		return super().create(validated_data)
+
+	def get_password(self, obj):
+		return "********"
   
 class BusinessSerializer(serializers.ModelSerializer):
     class Meta:
         model = Business
-        fields = '__all__'
-        read_only_fields = ['owner']  
+        fields = '__all__' 
 
