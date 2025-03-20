@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "django_filters",
     'corsheaders',
     "business_management",
-    "corsheaders",
 ]
 
 REST_FRAMEWORK = {

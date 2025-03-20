@@ -1,27 +1,15 @@
-
-# from django.shortcuts import render
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, status, generics
 from django_filters.rest_framework import DjangoFilterBackend
-from business_management.models import Business
-from business_management.serializers import BusinessSerializer
+from business_management.models import Business, Tasks, User, Client
+from business_management.serializers import BusinessSerializer, TaskSerializer, UserSerializer, ClientSerializer
 from business_management.filters import BusinessFilter
-from .models import Tasks
-from .serializers import TaskSerializer
-from .models import Client
-from .serializers import ClientSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, generics
 from django.shortcuts import get_object_or_404
-from .models import User
-from .serializers import UserSerializer
-from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
 
-
-# Create your views here.
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Tasks.objects.all()
@@ -38,7 +26,8 @@ class TaskViewSet(viewsets.ModelViewSet):
 class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
-    
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
 	queryset = User.objects.filter(user_type="Employee")
 	serializer_class = UserSerializer
@@ -106,6 +95,7 @@ class BusinessView(viewsets.ModelViewSet):
     filterset_class = BusinessFilter
     search_fields = ["name", "owner"]  
     ordering_fields = ["name", "created_at"] 
+
 
 class LoginView(APIView):
     def post(self, request):
