@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
+from rest_framework.permissions import IsAuthenticated
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -29,10 +30,17 @@ class ClientViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-	queryset = User.objects.filter(user_type="Employee")
+    
 	serializer_class = UserSerializer
+	permission_classes = [IsAuthenticated]
+
+	def get_queryset(self):
+		user = self.request.user 
+		return User.objects.filter(user_type="Employee", business=user.business)
+
 	def perform_create(self, serializer):
-		user = serializer.save(is_superuser=False, is_staff=False)
+		owner = self.request.user
+		user = serializer.save(is_superuser=False, is_staff=False, business=owner.business)
 		user.set_password(user.password)  
 		user.save()
 
