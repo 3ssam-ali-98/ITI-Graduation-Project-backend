@@ -7,6 +7,7 @@ class Client(models.Model):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, unique=True)
     address = models.TextField(blank=True, null=True)
+    notes = models.CharField(max_length=255, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     business = models.ForeignKey("Business", related_name='clients', on_delete=models.CASCADE, null=True) 
