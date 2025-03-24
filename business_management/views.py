@@ -25,8 +25,18 @@ from rest_framework.permissions import IsAuthenticated
 # Create your views here.
 
 class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Tasks.objects.all()
-    serializer_class = TaskSerializer
+	# queryset = Tasks.objects.all()
+	serializer_class = TaskSerializer
+	permission_classes = [IsAuthenticated]
+
+	def get_queryset(self):
+		user = self.request.user 
+		return Tasks.objects.filter(business=user.business)
+
+	def perform_create(self, serializer):
+			owner = self.request.user
+			task = serializer.save(business=owner.business)
+			task.save()
 
 # class TaskViewSet(viewsets.ModelViewSet):
 #     serializer_class = TaskSerializer
@@ -37,8 +47,18 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 class ClientViewSet(viewsets.ModelViewSet):
-    queryset = Client.objects.all()
-    serializer_class = ClientSerializer
+	# queryset = Client.objects.all()
+	serializer_class = ClientSerializer
+	permission_classes = [IsAuthenticated]
+
+	def get_queryset(self):
+		user = self.request.user 
+		return Client.objects.filter(business=user.business)
+
+	def perform_create(self, serializer):
+		owner = self.request.user
+		client = serializer.save(business=owner.business)
+		client.save()
     
 class EmployeeViewSet(viewsets.ModelViewSet):
     
@@ -64,9 +84,7 @@ class UserListCreateView(generics.ListCreateAPIView):
 	search_fields = ['username']
 
 	def perform_create(self, serializer):
-		user = serializer.save(is_superuser=False, is_staff=False)
-		user.set_password(user.password)  
-		user.save()
+		user = serializer.save()
 		business = Business.objects.create(name=self.request.data.get("business_name"), owner=user)
 		user.business = business
 		user.save()
@@ -115,17 +133,19 @@ class BusinessView(viewsets.ModelViewSet):
     ordering_fields = ["name", "created_at"] 
 
 class LoginView(APIView):
-    def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
+	def post(self, request):
+		email = request.data.get("email")
+		password = request.data.get("password")
 
-        try:
-            user = User.objects.get(email=email)  
-            if user.check_password(password):  
-                token, created = Token.objects.get_or_create(user=user)
-                return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.username}, status=status.HTTP_200_OK)
+		try:
+			user = User.objects.get(email=email)  
+			print(f"User found: {user.email}, Stored Password Hash: {user.password}")
+			if user.check_password(password):  
+				token, created = Token.objects.get_or_create(user=user)
+				return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
+			else:
+				print("Password check failed")
+		except User.DoesNotExist:
+			pass
 
-        except User.DoesNotExist:
-            pass
-
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+		return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)

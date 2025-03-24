@@ -8,8 +8,8 @@ from .views import UserListCreateView, UserDetailView
 
 
 router = DefaultRouter()
-router.register(r'tasks', TaskViewSet)
-router.register(r'clients', ClientViewSet)
+router.register(r'tasks', TaskViewSet, basename='task')
+router.register(r'clients', ClientViewSet, basename='client')
 router.register(r'employees', EmployeeViewSet, basename='employee')
 router.register(r'business', BusinessView, basename='business')
 
