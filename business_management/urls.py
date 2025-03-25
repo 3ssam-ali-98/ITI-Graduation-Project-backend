@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from business_management.views import BusinessView
-from .views import EmployeeViewSet, LoginView, TaskViewSet
+from .views import EmployeeViewSet, LoginView, TaskViewSet, validate_password
 from .views import ClientViewSet
 from .views import UserListCreateView, UserDetailView
 
@@ -20,5 +20,6 @@ urlpatterns = [
     path('users/', UserListCreateView.as_view(), name='user-list-create'),
 	path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('login/', LoginView.as_view(), name='login'),
+    path('validate-password/', validate_password, name='validate-password'),
 ]
 
