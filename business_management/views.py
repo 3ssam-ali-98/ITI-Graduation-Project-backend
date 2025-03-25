@@ -4,7 +4,7 @@ from rest_framework import viewsets, filters, status, generics
 from rest_framework.decorators import api_view
 # from django.shortcuts import render
 from rest_framework import viewsets, filters
-
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from business_management.models import Business, Task, User, Client
 from business_management.serializers import BusinessSerializer, TaskSerializer, UserSerializer, ClientSerializer
@@ -16,7 +16,7 @@ from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
 from rest_framework.permissions import IsAuthenticated
-
+from django.core.mail import send_mail
 from rest_framework.authentication import TokenAuthentication
 from django.views import View
 from django.contrib.auth.hashers import make_password
@@ -50,14 +50,15 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 class EmployeeCanReadAndCreateOnly(permissions.BasePermission):
 
-    def has_permission(self, request, view):
-        if not request.user.is_authenticated:
-            return False
+	def has_permission(self, request, view):
+		if not request.user.is_authenticated:
+			return False
 
-        if request.user.user_type == "Employee":
-            return request.method in ["GET", "POST"]
-
-        return False 
+		if request.user.user_type == "Employee":
+			return request.method in ["GET", "POST"]
+		else:
+			return request.method in ["GET", "POST", "PUT", "PATCH", "DELETE"]
+		return False 
 
 class ClientViewSet(viewsets.ModelViewSet):
 	serializer_class = ClientSerializer
