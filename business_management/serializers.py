@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Tasks
+from .models import Task
 from .models import Client
 from business_management.models import User
 from business_management.models import Business
@@ -8,7 +8,7 @@ from business_management.models import Business
 class TaskSerializer(serializers.ModelSerializer):
     assigned_employee = serializers.SerializerMethodField()
     class Meta:
-        model = Tasks
+        model = Task
         fields = '__all__'
         
     def get_assigned_employee(self, obj):

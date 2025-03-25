@@ -1,25 +1,27 @@
+from django.http import HttpResponse
 from rest_framework import viewsets, filters, status, generics
 from django_filters.rest_framework import DjangoFilterBackend
-from business_management.models import Business, Tasks, User, Client
+from business_management.models import Business, Task, User, Client
 from business_management.serializers import BusinessSerializer, TaskSerializer, UserSerializer, ClientSerializer
 from business_management.filters import BusinessFilter
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from django.views import View
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-	# queryset = Tasks.objects.all()
 	serializer_class = TaskSerializer
 	permission_classes = [IsAuthenticated]
 
 	def get_queryset(self):
 		user = self.request.user 
-		return Tasks.objects.filter(business=user.business)
+		return Task.objects.filter(business=user.business)
 
 	def perform_create(self, serializer):
 			owner = self.request.user
@@ -46,9 +48,9 @@ class ClientViewSet(viewsets.ModelViewSet):
 		owner = self.request.user
 		client = serializer.save(business=owner.business)
 		client.save()
-    
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
-    
 	serializer_class = UserSerializer
 	permission_classes = [IsAuthenticated]
 
@@ -112,13 +114,12 @@ class UserDetailView(APIView):
 
 
 class BusinessView(viewsets.ModelViewSet):
-    queryset = Business.objects.all()
-    serializer_class = BusinessSerializer   
-    
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = BusinessFilter
-    search_fields = ["name", "owner"]  
-    ordering_fields = ["name", "created_at"] 
+	queryset = Business.objects.all()
+	serializer_class = BusinessSerializer   
+	filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+	filterset_class = BusinessFilter
+	search_fields = ["name", "owner"]
+	ordering_fields = ["name", "created_at"] 
 
 
 class LoginView(APIView):
@@ -130,7 +131,7 @@ class LoginView(APIView):
 			user = User.objects.get(email=email)  
 			print(f"User found: {user.email}, Stored Password Hash: {user.password}")
 			if user.check_password(password):  
-				token, created = Token.objects.get_or_create(user=user)
+				token, _ = Token.objects.get_or_create(user=user)
 				return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
 			else:
 				print("Password check failed")
@@ -138,3 +139,4 @@ class LoginView(APIView):
 			pass
 
 		return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+
