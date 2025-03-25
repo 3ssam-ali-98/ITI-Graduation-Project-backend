@@ -49,23 +49,22 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeCanReadAndCreateOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
 
-	def has_permission(self, request, view):
-		if not request.user.is_authenticated:
-			return False
+        if request.user.user_type == "Employee":
+            return request.method in ["GET", "POST"]
 
-		if request.user.user_type == "Employee":
-			return request.method in ["GET", "POST"]
-		else:
-			return request.method in ["GET", "POST", "PUT", "PATCH", "DELETE"]
-		return False 
+        return True
 
 class ClientViewSet(viewsets.ModelViewSet):
 	serializer_class = ClientSerializer
 	permission_classes = [IsAuthenticated, EmployeeCanReadAndCreateOnly]
 
 	def get_queryset(self):
-		user = self.request.user 
+		user = self.request.user
+
 		return Client.objects.filter(business=user.business)
 
 	def perform_create(self, serializer):
