@@ -22,6 +22,9 @@ from django.contrib.auth.models import update_last_login
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import permissions
+
+
 
 
 # Create your views here.
@@ -48,10 +51,21 @@ class TaskViewSet(viewsets.ModelViewSet):
 #         return Tasks.objects.filter(business__id=business_id)
 
 
+class EmployeeCanReadAndCreateOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        if request.user.user_type == "Employee":
+            return request.method in ["GET", "POST"]
+
+        return False 
+
 class ClientViewSet(viewsets.ModelViewSet):
 	# queryset = Client.objects.all()
 	serializer_class = ClientSerializer
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsAuthenticated, EmployeeCanReadAndCreateOnly]
 
 	def get_queryset(self):
 		user = self.request.user 
@@ -61,11 +75,19 @@ class ClientViewSet(viewsets.ModelViewSet):
 		owner = self.request.user
 		client = serializer.save(business=owner.business)
 		client.save()
-    
+
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return request.user.user_type != "Employee"
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     
 	serializer_class = UserSerializer
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 	def get_queryset(self):
 		user = self.request.user 
