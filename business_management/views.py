@@ -1,5 +1,10 @@
+
 from django.http import HttpResponse
 from rest_framework import viewsets, filters, status, generics
+from rest_framework.decorators import api_view
+# from django.shortcuts import render
+from rest_framework import viewsets, filters
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from business_management.models import Business, Task, User, Client
 from business_management.serializers import BusinessSerializer, TaskSerializer, UserSerializer, ClientSerializer
@@ -11,13 +16,16 @@ from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import update_last_login
 from rest_framework.permissions import IsAuthenticated
+from django.core.mail import send_mail
 from rest_framework.authentication import TokenAuthentication
 from django.views import View
 from rest_framework import permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
-
+from django.contrib.auth.hashers import make_password
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import permissions
 
 class EmployeeTaskPermission(permissions.BasePermission):
 
@@ -37,7 +45,6 @@ class EmployeeTaskPermission(permissions.BasePermission):
             if not requested_fields.issubset(allowed_fields):
                 raise PermissionDenied("You can only modify the 'completed' field.")
         return True
-
 
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
@@ -60,12 +67,23 @@ class TaskViewSet(viewsets.ModelViewSet):
 #         return Tasks.objects.filter(business__id=business_id)
 
 
+class EmployeeCanReadAndCreateOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+
+        if request.user.user_type == "Employee":
+            return request.method in ["GET", "POST"]
+
+        return True
+
 class ClientViewSet(viewsets.ModelViewSet):
 	serializer_class = ClientSerializer
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsAuthenticated, EmployeeCanReadAndCreateOnly]
 
 	def get_queryset(self):
-		user = self.request.user 
+		user = self.request.user
+
 		return Client.objects.filter(business=user.business)
 
 	def perform_create(self, serializer):
@@ -74,9 +92,17 @@ class ClientViewSet(viewsets.ModelViewSet):
 		client.save()
 
 
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        return request.user.user_type != "Employee"
+
 class EmployeeViewSet(viewsets.ModelViewSet):
 	serializer_class = UserSerializer
-	permission_classes = [IsAuthenticated]
+	permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 	def get_queryset(self):
 		user = self.request.user 
@@ -84,8 +110,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 	def perform_create(self, serializer):
 		owner = self.request.user
-		user = serializer.save(is_superuser=False, is_staff=False, business=owner.business)
-		user.set_password(user.password)  
+		user = serializer.save()
+		user.business = owner.business 
 		user.save()
 
 
@@ -114,7 +140,18 @@ class UserDetailView(APIView):
 		data = request.data.copy()
 		data.pop("is_superuser", None)
 		data.pop("is_staff", None)
+		data.pop("email", None)	
+
+		if "password" in data:
+			data["password"] = make_password(data["password"])
+
+		if "business_name" in data:
+			if user.business:
+				user.business.name = data["business_name"]
+				user.business.save()
+		
 		serializer = UserSerializer(user, data=data)
+  
 		if serializer.is_valid():
 			serializer.save()
 			return Response(serializer.data, status=status.HTTP_200_OK)
@@ -125,7 +162,18 @@ class UserDetailView(APIView):
 		data = request.data.copy()
 		data.pop("is_superuser", None)
 		data.pop("is_staff", None)
+		data.pop("email", None)
+  
+		if "password" in data:
+			data["password"] = make_password(data["password"])
+   
+		if "business_name" in data:
+			if user.business:
+				user.business.name = data["business_name"]
+				user.business.save()
+    
 		serializer = UserSerializer(user, data=data, partial=True)
+  
 		if serializer.is_valid():
 			serializer.save()
 			return Response(serializer.data)
@@ -153,14 +201,24 @@ class LoginView(APIView):
 
 		try:
 			user = User.objects.get(email=email)  
-			print(f"User found: {user.email}, Stored Password Hash: {user.password}")
 			if user.check_password(password):  
-				token, _ = Token.objects.get_or_create(user=user)
-				return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
-			else:
-				print("Password check failed")
+
+				refresh = RefreshToken.for_user(user)
+				return Response({"token": str(refresh.access_token), "refresh_token": str(refresh), "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
+				# token, created = Token.objects.get_or_create(user=user)
+				# return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
 		except User.DoesNotExist:
 			pass
 
 		return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+def validate_password(request):
+    user = request.user
+    password = request.data.get("password")
+
+    if user.check_password(password):
+        return Response({"valid": True}, status=status.HTTP_200_OK)
+    return Response({"valid": False}, status=status.HTTP_400_BAD_REQUEST)
 
