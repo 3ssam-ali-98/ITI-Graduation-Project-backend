@@ -13,20 +13,44 @@ from django.contrib.auth.models import update_last_login
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.views import View
+from rest_framework import permissions, viewsets
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+
+class EmployeeTaskPermission(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated and
+            request.user.user_type == 'Employee' and
+            request.method in ['GET', 'PATCH']
+        )
+
+    def has_object_permission(self, request, view, obj):
+        if request.method == 'PATCH':
+            if obj.assigned_to != request.user:
+                raise PermissionDenied("You can only modify tasks assigned to you.")
+            allowed_fields = {'completed'}
+            requested_fields = set(request.data.keys())
+            if not requested_fields.issubset(allowed_fields):
+                raise PermissionDenied("You can only modify the 'completed' field.")
+        return True
 
 
 class TaskViewSet(viewsets.ModelViewSet):
-	serializer_class = TaskSerializer
-	permission_classes = [IsAuthenticated]
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated, EmployeeTaskPermission]
 
-	def get_queryset(self):
-		user = self.request.user 
-		return Task.objects.filter(business=user.business)
+    def get_queryset(self):
+        user = self.request.user
+        return Task.objects.filter(business=user.business)
 
-	def perform_create(self, serializer):
-			owner = self.request.user
-			task = serializer.save(business=owner.business)
-			task.save()
+    def perform_create(self, serializer):
+        owner = self.request.user
+        task = serializer.save(business=owner.business)
+        task.save()
 
 # class TaskViewSet(viewsets.ModelViewSet):
 #     serializer_class = TaskSerializer
