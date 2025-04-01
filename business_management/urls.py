@@ -19,4 +19,5 @@ urlpatterns = [
 	path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
     path('login/', LoginView.as_view(), name='login'),
     path('validate-password/', validate_password, name='validate-password'),
+    path('tasks-analytics/', TaskAnalytics.as_view(), name='tasks-analytics'),
 ]

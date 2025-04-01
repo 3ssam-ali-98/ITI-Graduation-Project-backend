@@ -10,7 +10,7 @@ class Client(models.Model):
 	notes = models.CharField(max_length=255, null=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
-	business = models.ForeignKey("Business", related_name='clients', on_delete=models.CASCADE, null=True) 
+	business = models.ForeignKey("Business", related_name='clients', on_delete=models.CASCADE, null=True)
 
 	def __str__(self):
 		return self.name
@@ -19,6 +19,7 @@ class Client(models.Model):
 class Business(models.Model):
 	name = models.CharField(max_length=50)
 	owner = models.OneToOneField("User", related_name='buisnesses', on_delete=models.CASCADE, null=True) 
+	is_premium = models.BooleanField(default=False)
 
 	def __str__(self):
 		return self.name
@@ -36,10 +37,11 @@ class Task(models.Model):
 	priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="Medium")
 	deadline = models.DateTimeField()
 	completed = models.BooleanField(default=False)
+	completed_at = models.DateTimeField(null=True, blank=True)
 	created_at = models.DateTimeField(auto_now_add=True)
 	business = models.ForeignKey("Business", related_name='tasks', on_delete=models.CASCADE, null=True) 
 	assigned_to = models.ForeignKey("User", related_name='tasks', on_delete=models.SET_NULL, null=True) 
-
+	completed_by = models.ForeignKey("User", related_name="completed_tasks", on_delete=models.SET_NULL, null=True, blank=True)
 	def __str__(self):
 		return self.name
 
