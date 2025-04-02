@@ -1,5 +1,4 @@
-
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from rest_framework import viewsets, filters, status, generics
 from rest_framework.decorators import api_view
 # from django.shortcuts import render
@@ -26,6 +25,9 @@ from rest_framework.response import Response
 from django.contrib.auth.hashers import make_password
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import permissions
+from django.utils.timezone import now
+from datetime import timedelta
+from django.db.models import Count, Q, F
 
 class EmployeeTaskPermission(permissions.BasePermission):
 
@@ -54,10 +56,47 @@ class TaskViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Task.objects.filter(business=user.business)
 
+<<<<<<< HEAD
     def perform_create(self, serializer):
         owner = self.request.user
         task = serializer.save(business=owner.business)
         task.save()
+=======
+	def perform_create(self, serializer):
+			owner = self.request.user
+			task = serializer.save(business=owner.business)
+			task.save()
+	def update(self, request, *args, **kwargs):
+		"""Handles PUT requests (full update)"""
+		instance = self.get_object()
+		previous_completed_status = instance.completed  
+		super().update(request, *args, **kwargs)  
+
+
+		instance.refresh_from_db()
+		if not previous_completed_status and instance.completed:  
+			instance.completed_by = request.user
+			instance.completed_at = now()
+			instance.save()
+
+		serializer = self.get_serializer(instance)
+		return Response(serializer.data, status=status.HTTP_200_OK)
+
+	def partial_update(self, request, *args, **kwargs):
+		"""Handles PATCH requests (partial update)"""
+		instance = self.get_object()
+		previous_completed_status = instance.completed  
+		response = super().partial_update(request, *args, **kwargs)  
+
+
+		instance.refresh_from_db()
+		if not previous_completed_status and instance.completed:
+			instance.completed_by = request.user
+			instance.completed_at = now()
+			instance.save()
+
+		return response
+>>>>>>> 4df6e5a2c7958b397bb5e0364d3d6a56662bb2c4
 
 # class TaskViewSet(viewsets.ModelViewSet):
 #     serializer_class = TaskSerializer
@@ -222,3 +261,95 @@ def validate_password(request):
         return Response({"valid": True}, status=status.HTTP_200_OK)
     return Response({"valid": False}, status=status.HTTP_400_BAD_REQUEST)
 
+class TaskAnalytics(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def get(self, request):
+		user = request.user
+		if not user.business.is_premium:
+			return JsonResponse({'error': 'Analytics is available only for premium businesses'}, status=403)
+
+		today = now().replace(hour=0, minute=0, second=0, microsecond=0)
+		first_day_of_month = today.replace(day=1)
+		first_day_last_month = (first_day_of_month - timedelta(days=1)).replace(day=1)
+
+		tasks_created_this_month = Task.objects.filter(
+			business=user.business,
+			created_at__gte=first_day_of_month
+		).count()
+		tasks_created_last_month = Task.objects.filter(
+			business=user.business,
+			created_at__gte=first_day_last_month,
+			created_at__lt=first_day_of_month
+		).count()
+		created_prcentage_change = calculate_percentage(tasks_created_last_month, tasks_created_this_month)
+
+		tasks_completed_this_month = Task.objects.filter(
+			business=user.business,
+			completed=True,
+			completed_at__gte=first_day_of_month
+		)
+		tasks_completed_this_month_count = tasks_completed_this_month.count()
+  
+		tasks_completed_last_month = Task.objects.filter(
+			business=user.business,
+			completed=True,
+			completed_at__gte=first_day_last_month,
+			completed_at__lt=first_day_of_month
+		)
+		tasks_completed_last_month_count = tasks_completed_last_month.count()
+
+		completed_prcentage_change = calculate_percentage(tasks_completed_last_month_count, tasks_completed_this_month_count)
+  
+		tasks_completed_within_deadline_this_month = tasks_completed_this_month.filter(completed_at__lte=F('deadline')).count()
+		tasks_completed_within_deadline_last_month = tasks_completed_last_month.filter(completed_at__lte=F('deadline')).count()
+		completed_within_deadline_percentage_change = calculate_percentage(tasks_completed_within_deadline_last_month, tasks_completed_within_deadline_this_month)
+	
+		tasks_completed_outside_deadline_this_month = tasks_completed_this_month.filter(completed_at__gt=F('deadline')).count()
+		tasks_completed_outside_deadline_last_month = tasks_completed_last_month.filter(completed_at__gt=F('deadline')).count()
+		completed_outside_deadline_percentage_change = calculate_percentage(tasks_completed_outside_deadline_last_month, tasks_completed_outside_deadline_this_month)
+  
+		top_employee_completed = User.objects.filter(business=user.business, completed_tasks__completed_at__gte=first_day_of_month).annotate(task_count=Count('completed_tasks')).order_by('-task_count').first()
+		top_employee_assigned = User.objects.filter(business=user.business, tasks__created_at__gte=first_day_of_month).annotate(task_count=Count('tasks')).order_by('-task_count').first()
+  
+		employee_with_most_tasks = User.objects.filter(business=user.business, tasks__completed=False).annotate(task_count=Count('tasks')).order_by('-task_count').first()
+
+		notcompleted_tasks =Task.objects.filter(
+			business=user.business,
+			completed=False,
+		).values('name', 'deadline', 'assigned_to__username')
+  
+		tasks_overdue = Task.objects.filter(
+			business=user.business,
+			completed=False,
+			deadline__lt=today
+		).values('name', 'deadline', 'assigned_to__username')
+  
+		return JsonResponse({
+        'tasks_created_this_month': tasks_created_this_month,
+        'created_tasks_percentage_change': created_prcentage_change,
+        'tasks_completed_this_month': tasks_completed_this_month_count,
+        'completed_tasks_percentage_change': completed_prcentage_change,
+        'completed_within_deadline': tasks_completed_within_deadline_this_month,
+        'completed_within_deadline_percentage_change': completed_within_deadline_percentage_change,
+        'completed_after_deadline': tasks_completed_outside_deadline_this_month,
+        'completed_after_deadline_percentage_change': completed_outside_deadline_percentage_change,
+        'top_employee_completed': top_employee_completed.username if top_employee_completed else None,
+        'top_employee_assigned': top_employee_assigned.username if top_employee_assigned else None,
+        'top_employee_uncompleted': employee_with_most_tasks.username if employee_with_most_tasks else None,
+        'notcompleted_tasks': list(notcompleted_tasks),
+        'overdue_tasks': list(tasks_overdue),
+    })
+
+
+def calculate_percentage(prev, current):
+	if prev == 0:
+		return "100.00% increase" if current > 0 else "No change"
+	if prev == current:
+		return "No change"
+	elif prev < current:
+		prcent = (current - prev) / prev * 100
+		return f"{prcent:.2f}% increase"
+	elif prev > current:
+		prcent = (prev - current) / prev * 100
+		return f"{prcent:.2f}% decrease"
