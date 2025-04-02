@@ -28,6 +28,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+PAYPAL_RECEIVER_EMAIL = "hosammedo528@gmail.com"
+PAYPAL_TEST = True
+
 
 # Application definition
 
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     "django_filters",
     'corsheaders',
     "business_management",
+    'paypal.standard.ipn',
 ]
 
 REST_FRAMEWORK = {
@@ -134,6 +138,9 @@ USE_I18N = True
 
 USE_TZ = True
 
+PAYPAL_CLIENT_ID = "AUXMvHeIxizVPXJiufLI7VKQAS6q5gTmlDmujgMTG1IY5ww-oWNEHZFm8L-7P9WmrW_ginDwjZr0_5Aq"
+PAYPAL_CLIENT_SECRET = "EOrhbLOmZAERv5OGdsMR0Kir8fFUyCdmw_c_GA4_YFzwTl3-GrFtDaMFkr0kmajBa8KeId-Vf_WCy_5v"
+PAYPAL_MODE = "sandbox"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
