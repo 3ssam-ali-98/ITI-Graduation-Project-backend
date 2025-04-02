@@ -32,7 +32,7 @@ import paypalrestsdk
 from paypal.standard.ipn.signals import valid_ipn_received
 from django.dispatch import receiver
 from urllib.parse import parse_qs
-
+from paypalrestsdk import Payment
 
 paypalrestsdk.configure({
     "mode": settings.PAYPAL_MODE,
@@ -249,7 +249,7 @@ class LoginView(APIView):
 			if user.check_password(password):  
 
 				refresh = RefreshToken.for_user(user)
-				return Response({"token": str(refresh.access_token), "refresh_token": str(refresh), "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
+				return Response({"token": str(refresh.access_token), "refresh_token": str(refresh), "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name, "is_premuim":user.business.is_premium}, status=status.HTTP_200_OK)
 				# token, created = Token.objects.get_or_create(user=user)
 				# return Response({"token": token.key, "user_id": user.id , "user_type": user.user_type, "user_name": user.first_name}, status=status.HTTP_200_OK)
 		except User.DoesNotExist:
@@ -362,8 +362,9 @@ def calculate_percentage(prev, current):
 
 
 class PaymentView(APIView):
+	permission_classes = [IsAuthenticated]
 	def post(self, request):
-		user_id = request.user.id  # Store user ID
+		user_id = request.user.id  
 
 		payment = paypalrestsdk.Payment({
 			"intent": "sale",
@@ -371,7 +372,7 @@ class PaymentView(APIView):
 				"payment_method": "paypal"
 			},
 			"redirect_urls": {
-				"return_url": f"http://localhost:8000/payment-success/?user_id={user_id}",  
+				"return_url": f"http://localhost:8000/execute-payment/",  
 				"cancel_url": "http://localhost:8000/payment-cancelled/"
 			},
 			"transactions": [{
@@ -379,7 +380,7 @@ class PaymentView(APIView):
 					"total": "10.00",
 					"currency": "USD"
 				},
-				"description": f"Test Payment for User {user_id}"
+				"description": "upgrade membership to premium"
 			}]
 		})
 
@@ -415,3 +416,31 @@ def payment_notification(sender, **kwargs):
 		business = user.business
 		business.is_premium = True
 		business.save()
+
+def execute_payment(request):
+
+    payment_id = request.GET.get("paymentId")
+    payer_id = request.GET.get("PayerID")
+
+    if not payment_id or not payer_id:
+        return JsonResponse({"error": "Missing payment details"}, status=400)
+
+    try:
+        payment = Payment.find(payment_id)
+    except paypalrestsdk.exceptions.PayPalConnectionError as e:
+        return JsonResponse({"error": f"PayPal connection error: {str(e)}"}, status=500)
+    except Exception as e:
+        return JsonResponse({"error": f"Error finding payment: {str(e)}"}, status=500)
+
+    print(payment)
+    
+
+    if payment.execute({"payer_id": payer_id}):
+        user = request.user
+        business = get_object_or_404(Business, owner=user)
+        business.is_premium = True
+        business.save()
+        return JsonResponse({"message": "Payment successful, business upgraded."})
+    else:
+        print(f"PayPal error: {payment.error}")
+        return JsonResponse({"error": payment.error}, status=500)
