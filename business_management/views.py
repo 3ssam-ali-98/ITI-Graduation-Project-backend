@@ -28,6 +28,18 @@ from rest_framework import permissions
 from django.utils.timezone import now
 from datetime import timedelta
 from django.db.models import Count, Q, F
+import paypalrestsdk
+from paypal.standard.ipn.signals import valid_ipn_received
+from django.dispatch import receiver
+from urllib.parse import parse_qs
+
+
+paypalrestsdk.configure({
+    "mode": settings.PAYPAL_MODE,
+    "client_id": settings.PAYPAL_CLIENT_ID,
+    "client_secret": settings.PAYPAL_CLIENT_SECRET
+})
+
 
 class EmployeeTaskPermission(permissions.BasePermission):
 
@@ -49,19 +61,13 @@ class EmployeeTaskPermission(permissions.BasePermission):
         return True
 
 class TaskViewSet(viewsets.ModelViewSet):
-    serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated, EmployeeTaskPermission]
+	serializer_class = TaskSerializer
+	permission_classes = [IsAuthenticated, EmployeeTaskPermission]
 
-    def get_queryset(self):
-        user = self.request.user
-        return Task.objects.filter(business=user.business)
+	def get_queryset(self):
+			user = self.request.user
+			return Task.objects.filter(business=user.business)
 
-<<<<<<< HEAD
-    def perform_create(self, serializer):
-        owner = self.request.user
-        task = serializer.save(business=owner.business)
-        task.save()
-=======
 	def perform_create(self, serializer):
 			owner = self.request.user
 			task = serializer.save(business=owner.business)
@@ -96,7 +102,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 			instance.save()
 
 		return response
->>>>>>> 4df6e5a2c7958b397bb5e0364d3d6a56662bb2c4
+
 
 # class TaskViewSet(viewsets.ModelViewSet):
 #     serializer_class = TaskSerializer
@@ -353,3 +359,59 @@ def calculate_percentage(prev, current):
 	elif prev > current:
 		prcent = (prev - current) / prev * 100
 		return f"{prcent:.2f}% decrease"
+
+
+class PaymentView(APIView):
+	def post(self, request):
+		user_id = request.user.id  # Store user ID
+
+		payment = paypalrestsdk.Payment({
+			"intent": "sale",
+			"payer": {
+				"payment_method": "paypal"
+			},
+			"redirect_urls": {
+				"return_url": f"http://localhost:8000/payment-success/?user_id={user_id}",  
+				"cancel_url": "http://localhost:8000/payment-cancelled/"
+			},
+			"transactions": [{
+				"amount": {
+					"total": "10.00",
+					"currency": "USD"
+				},
+				"description": f"Test Payment for User {user_id}"
+			}]
+		})
+
+		if payment.create():
+			for link in payment.links:
+				if link.rel == "approval_url":
+					print("Success")
+					return JsonResponse({"approval_url": link.href})
+		else:
+			return JsonResponse({"error": payment.error}, status=400)
+
+
+@receiver(valid_ipn_received)
+def payment_notification(sender, **kwargs):
+	ipn = sender
+
+	if ipn.payment_status == "Completed":
+		transaction_id = ipn.txn_id
+		amount = ipn.mc_gross
+		currency = ipn.mc_currency
+		user_email = ipn.payer_email
+
+		query_params = parse_qs(ipn.custom)
+		user_id = query_params.get("user_id", [None])[0]
+
+		user = None
+		if user_id:
+			user = User.objects.get(id=user_id)
+
+		if not user:
+			return
+
+		business = user.business
+		business.is_premium = True
+		business.save()
