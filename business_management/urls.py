@@ -21,7 +21,7 @@ urlpatterns = [
     path('validate-password/', validate_password, name='validate-password'),
     path('tasks-analytics/', TaskAnalytics.as_view(), name='tasks-analytics'),
     path('payment/', PaymentView.as_view(), name='payment'),
-    path('paypal/', include('paypal.standard.ipn.urls')),
+    # path('paypal/', include('paypal.standard.ipn.urls')),
     path('execute-payment/', execute_payment, name='execute-payment'),
 
 ]

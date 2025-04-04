@@ -34,6 +34,7 @@ from django.dispatch import receiver
 from urllib.parse import parse_qs
 from paypalrestsdk import Payment
 
+
 paypalrestsdk.configure({
     "mode": settings.PAYPAL_MODE,
     "client_id": settings.PAYPAL_CLIENT_ID,
@@ -372,7 +373,7 @@ class PaymentView(APIView):
 				"payment_method": "paypal"
 			},
 			"redirect_urls": {
-				"return_url": f"http://localhost:8000/execute-payment/",  
+				"return_url": f"http://localhost:8000/execute-payment/?user_id={user_id}",  
 				"cancel_url": "http://localhost:8000/payment-cancelled/"
 			},
 			"transactions": [{
@@ -387,60 +388,32 @@ class PaymentView(APIView):
 		if payment.create():
 			for link in payment.links:
 				if link.rel == "approval_url":
-					print("Success")
 					return JsonResponse({"approval_url": link.href})
 		else:
 			return JsonResponse({"error": payment.error}, status=400)
 
 
-@receiver(valid_ipn_received)
-def payment_notification(sender, **kwargs):
-	ipn = sender
+def execute_payment(request):
+	payment_id = request.GET.get("paymentId")
+	payer_id = request.GET.get("PayerID")
+	user_id = request.GET.get("user_id")
 
-	if ipn.payment_status == "Completed":
-		transaction_id = ipn.txn_id
-		amount = ipn.mc_gross
-		currency = ipn.mc_currency
-		user_email = ipn.payer_email
+	if not payment_id or not payer_id or not user_id:
+		return JsonResponse({"error": "Missing payment details"}, status=400)
 
-		query_params = parse_qs(ipn.custom)
-		user_id = query_params.get("user_id", [None])[0]
+	try:
+		payment = Payment.find(payment_id)
+	except paypalrestsdk.exceptions.PayPalConnectionError as e:
+		return JsonResponse({"error": f"PayPal connection error: {str(e)}"}, status=500)
+	except Exception as e:
+		return JsonResponse({"error": f"Error finding payment: {str(e)}"}, status=500)
 
-		user = None
-		if user_id:
-			user = User.objects.get(id=user_id)
-
-		if not user:
-			return
-
+	if payment.execute({"payer_id": payer_id}):
+		user = User.objects.get(id=user_id)
 		business = user.business
 		business.is_premium = True
 		business.save()
-
-def execute_payment(request):
-
-    payment_id = request.GET.get("paymentId")
-    payer_id = request.GET.get("PayerID")
-
-    if not payment_id or not payer_id:
-        return JsonResponse({"error": "Missing payment details"}, status=400)
-
-    try:
-        payment = Payment.find(payment_id)
-    except paypalrestsdk.exceptions.PayPalConnectionError as e:
-        return JsonResponse({"error": f"PayPal connection error: {str(e)}"}, status=500)
-    except Exception as e:
-        return JsonResponse({"error": f"Error finding payment: {str(e)}"}, status=500)
-
-    print(payment)
-    
-
-    if payment.execute({"payer_id": payer_id}):
-        user = request.user
-        business = get_object_or_404(Business, owner=user)
-        business.is_premium = True
-        business.save()
-        return JsonResponse({"message": "Payment successful, business upgraded."})
-    else:
-        print(f"PayPal error: {payment.error}")
-        return JsonResponse({"error": payment.error}, status=500)
+		return JsonResponse({"message": "Payment successful, business upgraded."})
+	else:
+		print(f"PayPal error: {payment.error}")
+		return JsonResponse({"error": payment.error}, status=500)

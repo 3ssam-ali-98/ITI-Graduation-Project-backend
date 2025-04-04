@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "django_filters",
     'corsheaders',
     "business_management",
-    'paypal.standard.ipn',
+    # 'paypal.standard.ipn',
 ]
 
 REST_FRAMEWORK = {
@@ -138,8 +138,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-PAYPAL_CLIENT_ID = "AUXMvHeIxizVPXJiufLI7VKQAS6q5gTmlDmujgMTG1IY5ww-oWNEHZFm8L-7P9WmrW_ginDwjZr0_5Aq"
-PAYPAL_CLIENT_SECRET = "EOrhbLOmZAERv5OGdsMR0Kir8fFUyCdmw_c_GA4_YFzwTl3-GrFtDaMFkr0kmajBa8KeId-Vf_WCy_5v"
+PAYPAL_CLIENT_ID = "AS-_hgLAuis6F_yV7Qg8XvDgk_RC-sheCJ0k0hQo5dQlcr5Y18YW6iO5_-dP7riTr27Jq71lHS1eH2rM"
+PAYPAL_CLIENT_SECRET = "ELwg3QCGhQV0mFcQr-7DRnn2JCx0WYlJK1410ljQvsjyiMzGYB-eN_f4Ueen3B5eLe1eB3woNyqMAVjc"
 PAYPAL_MODE = "sandbox"
 
 # Static files (CSS, JavaScript, Images)
