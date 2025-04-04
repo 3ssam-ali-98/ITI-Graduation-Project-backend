@@ -33,6 +33,58 @@ from paypal.standard.ipn.signals import valid_ipn_received
 from django.dispatch import receiver
 from urllib.parse import parse_qs
 from paypalrestsdk import Payment
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import BasePermission
+
+class IsSuperUser(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_superuser)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class AdminLoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        user = authenticate(request, email=email, password=password)
+
+        if not user or not user.is_superuser:
+            return Response(
+                {"error": "Invalid credentials or not an admin"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access_token": str(refresh.access_token),
+            "refresh_token": str(refresh),
+            "user_id": user.id,
+            "user_type": "Admin",
+            "user_name": user.first_name,
+        }, status=status.HTTP_200_OK)
+
+
+class AdminTaskViewSet(viewsets.ModelViewSet):
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    permission_classes = [IsSuperUser]
+
+
+class AdminUserViewSet(viewsets.ModelViewSet):
+    """Admin ViewSet to manage all users except superusers."""
+    serializer_class = UserSerializer
+    permission_classes = [IsSuperUser]  
+
+    def get_queryset(self):
+        return User.objects.filter(is_superuser=False)  
+
+
+class AdminClientViewSet(viewsets.ModelViewSet):
+    queryset = Client.objects.all()
+    serializer_class = ClientSerializer
+    permission_classes = [IsSuperUser]
 
 paypalrestsdk.configure({
     "mode": settings.PAYPAL_MODE,
