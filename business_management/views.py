@@ -52,7 +52,7 @@ class BusinessPagination(PageNumberPagination):
 # @method_decorator(csrf_exempt, name='dispatch')
 
 class BusinessDetailView(APIView):
-	permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+	permission_classes = [IsAuthenticated, IsSuperUser]  # Only authenticated users can access this view
 
 	def get(self, request, pk):
 		try:
@@ -68,7 +68,7 @@ class BusinessDetailView(APIView):
 			clients_serializer = ClientSerializer(clients, many=True)
 
 			return Response({
-		'business': business_serializer.data,
+				'business': business_serializer.data,
                 'employees': employees_serializer.data,
                 'tasks': tasks_serializer.data,
                 'clients': clients_serializer.data,
