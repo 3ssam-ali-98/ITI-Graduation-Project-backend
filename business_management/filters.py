@@ -7,4 +7,4 @@ class BusinessFilter(django_filters.FilterSet):
 
     class Meta:
         model = Business
-        fields = ["name", "owner"]
+        fields = ["name", "owner__first_name", "owner__last_name"]

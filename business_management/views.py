@@ -38,55 +38,109 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import BasePermission
 from django.http import HttpResponseRedirect
 from urllib.parse import urlencode
+from rest_framework.pagination import PageNumberPagination
 
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_superuser)
 
+class BusinessPagination(PageNumberPagination):
+    page_size = 10  # Set the number of results per page
+    page_size_query_param = 'page_size'  # Allow clients to specify page size
+    max_page_size = 100
 
-@method_decorator(csrf_exempt, name='dispatch')
+# @method_decorator(csrf_exempt, name='dispatch')
+
+class BusinessDetailView(APIView):
+	permission_classes = [IsAuthenticated]  # Only authenticated users can access this view
+
+	def get(self, request, pk):
+		try:
+			# Retrieve the Business by ID
+			business = Business.objects.get(id=pk)
+			employees = business.users.filter(user_type="Employee")  
+			tasks = business.tasks.all()  	
+			clients = business.clients.all()  
+
+			business_serializer = BusinessSerializer(business)
+			employees_serializer = UserSerializer(employees, many=True)
+			tasks_serializer = TaskSerializer(tasks, many=True)
+			clients_serializer = ClientSerializer(clients, many=True)
+
+			return Response({
+		'business': business_serializer.data,
+                'employees': employees_serializer.data,
+                'tasks': tasks_serializer.data,
+                'clients': clients_serializer.data,
+	})
+			
+			# Serialize the business along with related data
+			# serializer = BusinessSerializer(business)
+			
+			# return Response(serializer.data, status=200)
+		except Business.DoesNotExist:
+			return Response({"error": "Business not found"}, status=404)
 class AdminLoginView(APIView):
-    def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
-        user = authenticate(request, email=email, password=password)
+	def post(self, request):
+		email = request.data.get("email")
+		password = request.data.get("password")
 
-        if not user or not user.is_superuser:
-            return Response(
-                {"error": "Invalid credentials or not an admin"},
-                status=status.HTTP_403_FORBIDDEN
-            )
+		# Step 1: Check if user exists
+		try:
+			user = User.objects.get(email=email)
+		except User.DoesNotExist:
+			return Response(
+				{"error": "No user found with this email."},
+				status=status.HTTP_404_NOT_FOUND
+			)
 
-        refresh = RefreshToken.for_user(user)
+		# Step 2: Check password
+		if not user.check_password(password):
+			return Response(
+				{"error": "Incorrect password."},
+				status=status.HTTP_403_FORBIDDEN
+			)
 
-        return Response({
-            "access_token": str(refresh.access_token),
-            "refresh_token": str(refresh),
-            "user_id": user.id,
-            "user_type": "Admin",
-            "user_name": user.first_name,
-        }, status=status.HTTP_200_OK)
+		# Step 3: Check if user is superuser
+		if not user.is_superuser:
+			return Response(
+				{"error": "You are not authorized to access the admin panel."},
+				status=status.HTTP_403_FORBIDDEN
+			)
+
+		# Step 4: Everything is fine — issue token
+		refresh = RefreshToken.for_user(user)
+		return Response({
+			"token": str(refresh.access_token),
+			"refresh_token": str(refresh),
+			"user_id": user.id,
+			"user_type": "Admin",
+			"user_name": user.first_name,
+		}, status=status.HTTP_200_OK)
 
 
 class AdminTaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser]
 
 
 class AdminUserViewSet(viewsets.ModelViewSet):
-    """Admin ViewSet to manage all users except superusers."""
-    serializer_class = UserSerializer
-    permission_classes = [IsSuperUser]  
-
-    def get_queryset(self):
-        return User.objects.filter(is_superuser=False)  
+	"""Admin ViewSet to manage all users except superusers."""
+	queryset = User.objects.filter(is_superuser=False)
+	serializer_class = UserSerializer
+	permission_classes = [IsAuthenticated, IsSuperUser]  
+	filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+	search_fields = ['first_name', 'last_name', 'email']  # Add searchable fields
+	ordering_fields = ['first_name', 'last_name', 'created_at']
+	pagination_class = BusinessPagination
+ 
 
 
 class AdminClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
-    permission_classes = [IsSuperUser]
+    permission_classes = [IsAuthenticated, IsSuperUser]
 
 
 paypalrestsdk.configure({
@@ -288,10 +342,12 @@ class UserDetailView(APIView):
 class BusinessView(viewsets.ModelViewSet):
 	queryset = Business.objects.all()
 	serializer_class = BusinessSerializer   
+	permission_classes = [IsAuthenticated, IsSuperUser]
 	filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 	filterset_class = BusinessFilter
-	search_fields = ["name", "owner"]
+	search_fields = ["name", "owner__first_name", "owner__last_name"]
 	ordering_fields = ["name", "created_at"] 
+	pagination_class = BusinessPagination
 
 
 class LoginView(APIView):

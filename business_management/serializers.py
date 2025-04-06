@@ -26,6 +26,7 @@ class ClientSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
 	business_name = serializers.CharField(source="business.name", read_only=True)
+	business_premuim = serializers.CharField(source="business.is_premium", read_only=True)
 	password = serializers.CharField(write_only=True, required=True)
 	class Meta:
 		model = User
@@ -54,7 +55,12 @@ class UserSerializer(serializers.ModelSerializer):
 
   
 class BusinessSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Business
-        fields = '__all__' 
+	owner_name = serializers.SerializerMethodField()
+	class Meta:
+		model = Business
+		fields = '__all__' 
 
+	def get_owner_name(self, obj):
+		if obj.owner: 
+			return f"{obj.owner.first_name} {obj.owner.last_name}"
+		return None
