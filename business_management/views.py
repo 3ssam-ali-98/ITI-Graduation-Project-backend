@@ -36,6 +36,8 @@ from paypalrestsdk import Payment
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.permissions import BasePermission
+from django.http import HttpResponseRedirect
+from urllib.parse import urlencode
 
 class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
@@ -465,7 +467,16 @@ def execute_payment(request):
 		business = user.business
 		business.is_premium = True
 		business.save()
-		return JsonResponse({"message": "Payment successful, business upgraded."})
+		# return JsonResponse({"message": "Payment successful, business upgraded."})
+		params = urlencode({
+			"status": "success",
+			"message": "Payment successful, your business is now premium!"
+		})
+		return HttpResponseRedirect(f"http://localhost:3000/payment-result?{params}")
 	else:
-		print(f"PayPal error: {payment.error}")
-		return JsonResponse({"error": payment.error}, status=500)
+		# return JsonResponse({"error": payment.error}, status=500)
+		params = urlencode({
+			"status": "error",
+			"message": "Payment failed, please try again."
+		})
+		return HttpResponseRedirect(f"http://localhost:3000/payment-result?{params}")
