@@ -7,20 +7,20 @@ import urllib.parse
 
 @receiver(post_save, sender=Task)
 def create_or_update_periodic_task(sender, instance, created, **kwargs):
-	if instance.assigned_to and instance.assigned_to.email:
+	if instance.assigned_to and instance.assigned_to.email and instance.business.is_premium:
 		message = f"""<p>Hello {instance.assigned_to.first_name},</p>
 
-<p>You have been assigned a new task: <strong>{instance.name}</strong>.</p>
+	<p>You have been assigned a new task: <strong>{instance.name}</strong>.</p>
 
-<ul>
-    <li><strong>Deadline:</strong> {instance.deadline if instance.deadline else "No deadline"}</li>
-    <li><strong>Priority:</strong> {instance.priority}</li>
-</ul>
+	<ul>
+	<li><strong>Deadline:</strong> {instance.deadline if instance.deadline else "No deadline"}</li>
+	<li><strong>Priority:</strong> {instance.priority}</li>
+	</ul>
 
-<p>Please check your task list for more details.</p>
+	<p>Please check your task list for more details.</p>
 
-<p>Regards,<br>{instance.business.name} Team</p>
-"""
+	<p>Regards,<br>{instance.business.name} Team</p>
+	"""
 
 		encoded_message = urllib.parse.quote(message)
 

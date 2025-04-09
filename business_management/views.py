@@ -153,16 +153,19 @@ paypalrestsdk.configure({
 class EmployeeTaskPermission(permissions.BasePermission):
 
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            request.user.user_type == 'Employee' and
-            request.method in ['GET', 'PATCH']
-        )
+        if not request.user.is_authenticated:
+            return False
+
+        if request.user.user_type == 'Business Owner':
+            return True 
+
+        if request.user.user_type == 'Employee' and request.method in ['GET', 'PATCH']:
+            return True
+
+        return False
 
     def has_object_permission(self, request, view, obj):
         if request.method == 'PATCH':
-            if obj.assigned_to != request.user:
-                raise PermissionDenied("You can only modify tasks assigned to you.")
             allowed_fields = {'completed'}
             requested_fields = set(request.data.keys())
             if not requested_fields.issubset(allowed_fields):
