@@ -116,6 +116,7 @@ class AdminLoginView(APIView):
 			"user_id": user.id,
 			"user_type": "Admin",
 			"user_name": user.first_name,
+   			"is_premuim":user.business.is_premium
 		}, status=status.HTTP_200_OK)
 
 
@@ -410,7 +411,7 @@ class TaskAnalytics(APIView):
 			completed_at__gte=first_day_of_month
 		)
 		tasks_completed_this_month_count = tasks_completed_this_month.count()
-  
+
 		tasks_completed_last_month = Task.objects.filter(
 			business=user.business,
 			completed=True,
@@ -420,46 +421,47 @@ class TaskAnalytics(APIView):
 		tasks_completed_last_month_count = tasks_completed_last_month.count()
 
 		completed_prcentage_change = calculate_percentage(tasks_completed_last_month_count, tasks_completed_this_month_count)
-  
+
 		tasks_completed_within_deadline_this_month = tasks_completed_this_month.filter(completed_at__lte=F('deadline')).count()
 		tasks_completed_within_deadline_last_month = tasks_completed_last_month.filter(completed_at__lte=F('deadline')).count()
 		completed_within_deadline_percentage_change = calculate_percentage(tasks_completed_within_deadline_last_month, tasks_completed_within_deadline_this_month)
-	
+
 		tasks_completed_outside_deadline_this_month = tasks_completed_this_month.filter(completed_at__gt=F('deadline')).count()
 		tasks_completed_outside_deadline_last_month = tasks_completed_last_month.filter(completed_at__gt=F('deadline')).count()
 		completed_outside_deadline_percentage_change = calculate_percentage(tasks_completed_outside_deadline_last_month, tasks_completed_outside_deadline_this_month)
-  
+
 		top_employee_completed = User.objects.filter(business=user.business, completed_tasks__completed_at__gte=first_day_of_month).annotate(task_count=Count('completed_tasks')).order_by('-task_count').first()
 		top_employee_assigned = User.objects.filter(business=user.business, tasks__created_at__gte=first_day_of_month).annotate(task_count=Count('tasks')).order_by('-task_count').first()
-  
+
 		employee_with_most_tasks = User.objects.filter(business=user.business, tasks__completed=False).annotate(task_count=Count('tasks')).order_by('-task_count').first()
+		print(employee_with_most_tasks)
 
 		notcompleted_tasks =Task.objects.filter(
 			business=user.business,
 			completed=False,
-		).values('name', 'deadline', 'assigned_to__username')
-  
+		).values('name', 'deadline', 'assigned_to__first_name', 'assigned_to__last_name')
+
 		tasks_overdue = Task.objects.filter(
 			business=user.business,
 			completed=False,
 			deadline__lt=today
-		).values('name', 'deadline', 'assigned_to__username')
-  
+		).values('name', 'deadline', 'assigned_to__first_name', 'assigned_to__last_name')
+
 		return JsonResponse({
-        'tasks_created_this_month': tasks_created_this_month,
-        'created_tasks_percentage_change': created_prcentage_change,
-        'tasks_completed_this_month': tasks_completed_this_month_count,
-        'completed_tasks_percentage_change': completed_prcentage_change,
-        'completed_within_deadline': tasks_completed_within_deadline_this_month,
-        'completed_within_deadline_percentage_change': completed_within_deadline_percentage_change,
-        'completed_after_deadline': tasks_completed_outside_deadline_this_month,
-        'completed_after_deadline_percentage_change': completed_outside_deadline_percentage_change,
-        'top_employee_completed': top_employee_completed.username if top_employee_completed else None,
-        'top_employee_assigned': top_employee_assigned.username if top_employee_assigned else None,
-        'top_employee_uncompleted': employee_with_most_tasks.username if employee_with_most_tasks else None,
-        'notcompleted_tasks': list(notcompleted_tasks),
-        'overdue_tasks': list(tasks_overdue),
-    })
+		'tasks_created_this_month': tasks_created_this_month,
+		'created_tasks_percentage_change': created_prcentage_change,
+		'tasks_completed_this_month': tasks_completed_this_month_count,
+		'completed_tasks_percentage_change': completed_prcentage_change,
+		'completed_within_deadline': tasks_completed_within_deadline_this_month,
+		'completed_within_deadline_percentage_change': completed_within_deadline_percentage_change,
+		'completed_after_deadline': tasks_completed_outside_deadline_this_month,
+		'completed_after_deadline_percentage_change': completed_outside_deadline_percentage_change,
+		'top_employee_completed': top_employee_completed.first_name + " " + top_employee_completed.last_name if top_employee_completed else None,
+		'top_employee_assigned': top_employee_assigned.first_name + " " + top_employee_assigned.last_name if top_employee_assigned else None,
+		'top_employee_uncompleted': employee_with_most_tasks.first_name + " " + employee_with_most_tasks.last_name if employee_with_most_tasks else None,
+		'notcompleted_tasks': list(notcompleted_tasks),
+		'overdue_tasks': list(tasks_overdue),
+	})
 
 
 def calculate_percentage(prev, current):
