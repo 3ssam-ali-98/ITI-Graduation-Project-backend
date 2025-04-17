@@ -28,10 +28,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-PAYPAL_RECEIVER_EMAIL = "hosammedo528@gmail.com"
-PAYPAL_TEST = True
-
-
 # Application definition
 
 CORS_Allowed_Origins = [
@@ -137,10 +133,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
-PAYPAL_CLIENT_ID = "AS-_hgLAuis6F_yV7Qg8XvDgk_RC-sheCJ0k0hQo5dQlcr5Y18YW6iO5_-dP7riTr27Jq71lHS1eH2rM"
-PAYPAL_CLIENT_SECRET = "ELwg3QCGhQV0mFcQr-7DRnn2JCx0WYlJK1410ljQvsjyiMzGYB-eN_f4Ueen3B5eLe1eB3woNyqMAVjc"
-PAYPAL_MODE = "sandbox"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
